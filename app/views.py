@@ -1,27 +1,49 @@
-from app import app
-from flask import render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_mail import Message  # Import Message
+from . import mail  # Import the mail object from the app package
+from .config import Config
+from .forms import ContactForm
 
+# Create a Blueprint
+bp = Blueprint('main', __name__)
 
-###
-# Routing for your application.
-###
-
-@app.route('/')
+@bp.route('/')
 def home():
     """Render website's home page."""
     return render_template('home.html')
 
-
-@app.route('/about/')
+@bp.route('/about/')
 def about():
     """Render the website's about page."""
     return render_template('about.html', name="Mary Jane")
 
+@bp.route('/contact', methods=['GET', 'POST'])
+def contact():
+    """Render and process the contact form."""
+    form = ContactForm()
+    if form.validate_on_submit():
+        # Get form data
+        name = form.name.data
+        email = form.email.data
+        subject = form.subject.data
+        message = form.message.data
 
-###
-# The functions below should be applicable to all Flask apps.
-###
+        # Create and send the email
+        msg = Message(
+            subject=subject,
+            sender=('Your Name', Config.MAIL_DEFAULT_SENDER),
+            recipients=[email]
+        )
+        msg.body = f"Name: {name}\nEmail: {email}\nMessage: {message}"
+        mail.send(msg)  # Use the mail object imported from app
 
+        # Flash a success message and redirect to the home page
+        flash('Your message has been sent successfully!', 'success')
+        return redirect(url_for('main.home'))
+
+    # Flash form errors if validation fails
+    flash_errors(form)
+    return render_template('contact.html', form=form)
 
 # Flash errors from the form if validation fails
 def flash_errors(form):
@@ -31,28 +53,3 @@ def flash_errors(form):
                 getattr(form, field).label.text,
                 error
             ), 'danger')
-
-
-@app.route('/<file_name>.txt')
-def send_text_file(file_name):
-    """Send your static text file."""
-    file_dot_text = file_name + '.txt'
-    return app.send_static_file(file_dot_text)
-
-
-@app.after_request
-def add_header(response):
-    """
-    Add headers to both force latest IE rendering engine or Chrome Frame,
-    and also tell the browser not to cache the rendered page. If we wanted
-    to we could change max-age to 600 seconds which would be 10 minutes.
-    """
-    response.headers['X-UA-Compatible'] = 'IE=Edge,chrome=1'
-    response.headers['Cache-Control'] = 'public, max-age=0'
-    return response
-
-
-@app.errorhandler(404)
-def page_not_found(error):
-    """Custom 404 page."""
-    return render_template('404.html'), 404
