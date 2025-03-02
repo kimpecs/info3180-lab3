@@ -1,10 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_mail import Message
-from .forms import ContactForm 
-from . import mail  
+from .forms import ContactForm
+from . import mail 
 
 # Create a Blueprint for views
 bp = Blueprint('main', __name__)
+
 
 ###
 # Routing for application.
@@ -50,6 +51,20 @@ def contact():
 
     return render_template("contact.html", form=form)
 
+@bp.route('/test-email')
+def test_email():
+    try:
+        msg = Message(
+            subject="Test Email",
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
+            recipients=["recipient@example.com"]
+        )
+        msg.body = "This is a test email."
+        mail.send(msg)
+        return "Email sent successfully!"
+    except Exception as e:
+        return f"Failed to send email: {str(e)}"
+    
 ###
 # The functions below should be applicable to all Flask apps.
 ###
